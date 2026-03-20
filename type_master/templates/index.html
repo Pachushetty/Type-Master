@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Typing Speed Test</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0e0e12;
+  --card:#18181f;
+  --border:#28283a;
+  --accent:#f5c518;
+  --correct:#34d399;
+  --wrong:#f87171;
+  --pending:#555570;
+  --active:#a0a0c0;
+  --text:#ececf5;
+  --muted:#44445a;
+  --soft:#7878a0;
+  --ui:'Syne',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--ui);
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  align-items:center;
+  padding:0 16px 60px;
+}
+.page{width:100%;max-width:820px}
+
+/* HEADER */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:24px 0 24px}
+.logo{font-family:var(--mono);font-size:1.1rem;font-weight:600;letter-spacing:-.03em}
+.logo b{color:var(--accent)}
+.badge{
+  background:rgba(245,197,24,.08);border:1px solid rgba(245,197,24,.2);
+  border-radius:30px;padding:5px 16px;
+  font-family:var(--mono);font-size:.68rem;color:var(--accent);letter-spacing:.1em
+}
+
+/* TIME SELECTOR */
+.time-select{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:18px;
+}
+.ts-label{font-family:var(--mono);font-size:.7rem;color:var(--soft);letter-spacing:.1em;text-transform:uppercase;margin-right:4px}
+.ts-btn{
+  padding:7px 18px;border-radius:8px;border:1px solid var(--border);
+  background:var(--card);color:var(--soft);
+  font-family:var(--mono);font-size:.75rem;cursor:pointer;transition:all .15s
+}
+.ts-btn:hover{color:var(--text);border-color:var(--soft)}
+.ts-btn.active{background:rgba(245,197,24,.12);color:var(--accent);border-color:rgba(245,197,24,.35)}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px}
+.stat{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:14px 10px;text-align:center
+}
+.sv{
+  font-family:var(--mono);font-size:1.7rem;font-weight:600;
+  color:var(--accent);line-height:1;transition:color .3s
+}
+.sv.danger{color:var(--wrong)}
+.sv.good{color:var(--correct)}
+.sl{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-top:5px}
+
+/* PROGRESS */
+.prog{height:3px;background:var(--border);border-radius:3px;margin-bottom:18px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent),#ff6b35);width:0%;transition:width .2s}
+
+/* INSTRUCTIONS */
+.instructions{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:16px 22px;margin-bottom:18px;
+}
+.inst-title{font-family:var(--mono);font-size:.68rem;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px}
+.inst-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:7px}
+.inst-item{font-family:var(--mono);font-size:.72rem;color:var(--soft);display:flex;align-items:center;gap:7px}
+
+/* ══ PASSAGE BOX ══ */
+.passage-label{
+  font-family:var(--mono);font-size:.68rem;color:var(--soft);
+  text-transform:uppercase;letter-spacing:.12em;
+  margin-bottom:8px;display:flex;align-items:center;gap:8px
+}
+.passage-box{
+  background:var(--card);border:1.5px solid var(--border);
+  border-radius:16px;padding:26px 28px;
+  margin-bottom:18px;
+  /* FIX: allow wrapping, no overflow */
+  overflow:hidden;
+}
+
+/* FIX: word-wrap and white-space so text wraps properly */
+#passage-display{
+  font-family:var(--mono);font-size:1.22rem;
+  line-height:2.0;
+  letter-spacing:.02em;
+  word-spacing:.1em;
+  word-break:break-word;
+  white-space:normal;        /* allow wrapping */
+  overflow-wrap:break-word;
+  user-select:none;
+}
+#passage-display .ch{
+  display:inline;
+  position:relative;
+  transition:color .08s,background .08s;
+  color:var(--pending);
+}
+#passage-display .ch.ok{color:var(--correct)}
+#passage-display .ch.bad{
+  color:var(--wrong);
+  background:rgba(248,113,113,.14);
+  border-radius:2px;
+}
+#passage-display .ch.cur{color:var(--active)}
+#passage-display .ch.cur::before{
+  content:'';
+  position:absolute;left:0;top:15%;bottom:15%;
+  width:2px;background:var(--accent);border-radius:2px;
+  animation:blink 1s step-end infinite
+}
+
+/* ══ COUNTDOWN TIMER ══ */
+.countdown-wrap{
+  display:flex;align-items:center;justify-content:center;
+  gap:12px;margin-bottom:16px;
+}
+.countdown-ring{position:relative;width:72px;height:72px;flex-shrink:0}
+.cring-svg{width:72px;height:72px;transform:rotate(-90deg)}
+.cring-bg{fill:none;stroke:var(--border);stroke-width:4}
+.cring-fg{
+  fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;
+  stroke-dasharray:197.9;stroke-dashoffset:0;
+  transition:stroke-dashoffset 1s linear, stroke .4s;
+}
+.cring-num{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--accent);
+  transition:color .4s;
+}
+.countdown-label{font-family:var(--mono);font-size:.72rem;color:var(--soft);letter-spacing:.1em;text-transform:uppercase}
+
+/* ══ INPUT BOX ══ */
+.input-label{
+  font-family:var(--mono);font-size:.68rem;color:var(--soft);
+  text-transform:uppercase;letter-spacing:.12em;
+  margin-bottom:8px;display:flex;align-items:center;gap:8px
+}
+.input-wrap{
+  background:var(--card);border:2px solid var(--border);
+  border-radius:16px;padding:18px 22px;
+  margin-bottom:18px;
+  display:flex;align-items:center;gap:14px;
+  cursor:text;transition:border-color .2s
+}
+.input-wrap:focus-within{border-color:rgba(245,197,24,.45)}
+.input-wrap.correct-border{border-color:rgba(52,211,153,.4)}
+.input-wrap.wrong-border{border-color:rgba(248,113,113,.4)}
+.input-wrap.disabled-wrap{opacity:.5;pointer-events:none}
+.input-icon{font-size:1.2rem;flex-shrink:0}
+#type-input{
+  flex:1;background:none;border:none;outline:none;
+  font-family:var(--mono);font-size:1.1rem;
+  color:var(--text);caret-color:var(--accent);letter-spacing:.04em;
+  min-width:0;
+}
+#type-input::placeholder{color:var(--muted);font-size:.9rem}
+
+/* TIME UP banner */
+.time-up{
+  display:none;
+  background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);
+  border-radius:10px;padding:12px 20px;
+  font-family:var(--mono);font-size:.85rem;color:var(--wrong);
+  text-align:center;margin-bottom:14px;letter-spacing:.06em;
+}
+.time-up.show{display:block}
+
+/* BUTTONS */
+.btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:20px}
+.btn{
+  padding:12px 30px;border-radius:10px;border:none;
+  font-family:var(--mono);font-size:.8rem;font-weight:500;
+  cursor:pointer;letter-spacing:.06em;transition:all .15s
+}
+.btn-y{background:var(--accent);color:#0e0e12}
+.btn-y:hover{opacity:.85;transform:translateY(-1px)}
+.btn-g{background:var(--card);color:var(--soft);border:1px solid var(--border)}
+.btn-g:hover{color:var(--text);border-color:var(--soft)}
+
+/* RESULT MODAL */
+.modal-bg{
+  position:fixed;inset:0;background:rgba(0,0,0,.88);
+  display:flex;align-items:center;justify-content:center;
+  z-index:100;padding:20px;opacity:0;pointer-events:none;
+  transition:opacity .35s;backdrop-filter:blur(10px)
+}
+.modal-bg.on{opacity:1;pointer-events:all}
+.modal{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:24px;padding:40px 36px;
+  width:100%;max-width:460px;text-align:center;
+  transform:translateY(16px);transition:transform .35s;
+  position:relative;overflow:hidden
+}
+.modal-bg.on .modal{transform:translateY(0)}
+.modal::before{
+  content:'';position:absolute;top:0;left:15%;right:15%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent)
+}
+.m-tag{font-family:var(--mono);font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
+.m-wpm{font-family:var(--mono);font-size:5rem;font-weight:700;color:var(--accent);line-height:1}
+.m-sub{font-family:var(--mono);font-size:.7rem;letter-spacing:.15em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.m-rank{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 22px;border-radius:30px;
+  font-family:var(--mono);font-size:.78rem;font-weight:600;
+  letter-spacing:.06em;margin-bottom:24px
+}
+.rk-b{background:rgba(107,114,128,.12);color:#9ca3af;border:1px solid rgba(107,114,128,.25)}
+.rk-a{background:rgba(96,165,250,.12);color:#60a5fa;border:1px solid rgba(96,165,250,.25)}
+.rk-g{background:rgba(52,211,153,.12);color:var(--correct);border:1px solid rgba(52,211,153,.25)}
+.rk-f{background:rgba(245,197,24,.12);color:var(--accent);border:1px solid rgba(245,197,24,.25)}
+.rk-e{background:rgba(255,107,53,.12);color:#ff6b35;border:1px solid rgba(255,107,53,.25)}
+.rk-el{background:rgba(167,139,250,.12);color:#a78bfa;border:1px solid rgba(167,139,250,.25)}
+.m-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px}
+.mg{background:#0e0e12;border:1px solid var(--border);border-radius:10px;padding:12px 8px}
+.mg-v{font-family:var(--mono);font-size:1.3rem;font-weight:600;color:var(--text)}
+.mg-l{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.m-btns{display:flex;gap:10px;justify-content:center}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+@media(max-width:540px){
+  .stats{grid-template-columns:repeat(3,1fr)}
+  #passage-display{font-size:1rem}
+  #type-input{font-size:.95rem}
+  .modal{padding:28px 18px}
+  .m-wpm{font-size:3.5rem}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- Header -->
+<div class="hdr">
+  <div class="logo">type<b>speed</b></div>
+  <div class="badge">⌨️ WPM TEST</div>
+</div>
+
+<!-- Time selector -->
+<div class="time-select">
+  <span class="ts-label">⏱ Time:</span>
+  <button class="ts-btn" onclick="selectTime(15)">15s</button>
+  <button class="ts-btn active" id="ts60" onclick="selectTime(60)">60s</button>
+  <button class="ts-btn" onclick="selectTime(30)">30s</button>
+  <button class="ts-btn" onclick="selectTime(120)">120s</button>
+</div>
+
+<!-- Instructions -->
+<div class="instructions">
+  <div class="inst-title">📖 How to Play</div>
+  <div class="inst-list">
+    <div class="inst-item"><span>👁️</span> Read the passage shown below</div>
+    <div class="inst-item"><span>⌨️</span> Type it exactly in the input box</div>
+    <div class="inst-item"><span>🟢</span> Green = correct letter</div>
+    <div class="inst-item"><span>🔴</span> Red = wrong letter</div>
+    <div class="inst-item"><span>⏱️</span> Timer counts down when you start</div>
+    <div class="inst-item"><span>⇥</span> Press Tab to restart anytime</div>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat"><div class="sv" id="sWpm">0</div><div class="sl">WPM</div></div>
+  <div class="stat"><div class="sv" id="sAcc">100%</div><div class="sl">Accuracy</div></div>
+  <div class="stat"><div class="sv" id="sErr">0</div><div class="sl">Errors</div></div>
+  <div class="stat"><div class="sv" id="sTime">—</div><div class="sl">Elapsed</div></div>
+  <div class="stat"><div class="sv" id="sLeft" style="color:var(--accent)">60</div><div class="sl">Remaining</div></div>
+</div>
+
+<!-- Progress bar -->
+<div class="prog"><div class="prog-fill" id="progFill"></div></div>
+
+<!-- PASSAGE -->
+<div class="passage-label">👁 Read this passage and type it below</div>
+<div class="passage-box">
+  <div id="passage-display">Loading passage…</div>
+</div>
+
+<!-- Countdown ring -->
+<div class="countdown-wrap">
+  <div class="countdown-ring">
+    <svg class="cring-svg" viewBox="0 0 72 72">
+      <circle class="cring-bg" cx="36" cy="36" r="31.5"/>
+      <circle class="cring-fg" id="cringFg" cx="36" cy="36" r="31.5"/>
+    </svg>
+    <div class="cring-num" id="cringNum">60</div>
+  </div>
+  <div class="countdown-label">seconds remaining</div>
+</div>
+
+<!-- Time up banner -->
+<div class="time-up" id="timeUpBanner">⏰ TIME'S UP! — See your results below</div>
+
+<!-- INPUT -->
+<div class="input-label">✍️ Type here — timer starts on first keystroke</div>
+<div class="input-wrap" id="inputWrap" onclick="document.getElementById('type-input').focus()">
+  <div class="input-icon">✍️</div>
+  <input
+    type="text"
+    id="type-input"
+    placeholder="Click here and start typing the passage above…"
+    autocomplete="off"
+    autocorrect="off"
+    autocapitalize="off"
+    spellcheck="false"
+  />
+</div>
+
+<!-- Buttons -->
+<div class="btns">
+  <button class="btn btn-y" onclick="newTest()">↺ New Passage</button>
+  <button class="btn btn-g" onclick="retryTest()">⟳ Retry Same</button>
+</div>
+
+</div><!-- /page -->
+
+<!-- Result Modal -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="m-tag">Test Complete ✓</div>
+    <div class="m-wpm" id="mWpm">0</div>
+    <div class="m-sub">Words Per Minute</div>
+    <div class="m-rank" id="mRank"></div>
+    <div class="m-grid">
+      <div class="mg"><div class="mg-v" id="mRaw">0</div><div class="mg-l">Raw WPM</div></div>
+      <div class="mg"><div class="mg-v" id="mAcc">0%</div><div class="mg-l">Accuracy</div></div>
+      <div class="mg"><div class="mg-v" id="mErr">0</div><div class="mg-l">Errors</div></div>
+      <div class="mg"><div class="mg-v" id="mCorrect">0</div><div class="mg-l">Correct</div></div>
+      <div class="mg"><div class="mg-v" id="mTotal">0</div><div class="mg-l">Chars</div></div>
+      <div class="mg"><div class="mg-v" id="mTime">0s</div><div class="mg-l">Duration</div></div>
+    </div>
+    <div class="m-btns">
+      <button class="btn btn-y" onclick="closeModal();newTest()">↺ New Test</button>
+      <button class="btn btn-g" onclick="closeModal();retryTest()">⟳ Retry</button>
+      <button class="btn btn-g" onclick="closeModal()">✕ Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONFIG ────────────────────────────────────
+const CIRC = 2 * Math.PI * 31.5; // 197.9
+
+// ── STATE ─────────────────────────────────────
+let passage     = '';
+let chars       = [];
+let userInput   = '';
+let startTime   = null;
+let countdownID = null;
+let elapsedID   = null;
+let timeLimit   = 60;
+let timeLeft    = 60;
+let elapsedSec  = 0;
+let finished    = false;
+let errorCount  = 0;
+let lastPassage = '';
+
+// ── TIME SELECTOR ─────────────────────────────
+function selectTime(t) {
+  timeLimit = t;
+  document.querySelectorAll('.ts-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent === t + 's');
+  });
+  newTest();
+}
+
+// ── INIT ──────────────────────────────────────
+async function init(useLastPassage = false) {
+  clearInterval(countdownID);
+  clearInterval(elapsedID);
+
+  finished    = false;
+  startTime   = null;
+  elapsedSec  = 0;
+  errorCount  = 0;
+  userInput   = '';
+  timeLeft    = timeLimit;
+
+  document.getElementById('type-input').value       = '';
+  document.getElementById('type-input').disabled    = false;
+  document.getElementById('type-input').placeholder = 'Click here and start typing the passage above…';
+  document.getElementById('progFill').style.width   = '0%';
+  document.getElementById('inputWrap').className    = 'input-wrap';
+  document.getElementById('timeUpBanner').classList.remove('show');
+
+  setStats(0, '100%', 0, '—', timeLimit);
+  setRing(timeLimit, timeLimit);
+
+  if (useLastPassage && lastPassage) {
+    passage = lastPassage;
+  } else {
+    document.getElementById('passage-display').textContent = 'Loading…';
+    try {
+      const r = await fetch('/get_passage');
+      const d = await r.json();
+      passage = d.passage;
+      lastPassage = passage;
+    } catch(e) {
+      passage = 'the quick brown fox jumps over the lazy dog and runs fast into the deep forest beyond the hills';
+      lastPassage = passage;
+    }
+  }
+
+  chars = passage.split('');
+  renderPassage();
+}
+
+// ── RENDER PASSAGE ────────────────────────────
+function renderPassage() {
+  const el = document.getElementById('passage-display');
+  let html = '';
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    let cls = 'ch';
+    if (i < userInput.length) {
+      cls = userInput[i] === ch ? 'ch ok' : 'ch bad';
+    } else if (i === userInput.length) {
+      cls = 'ch cur';
+    }
+    const disp = ch === ' '
+      ? `<span class="${cls}">&nbsp;</span>`
+      : `<span class="${cls}">${escH(ch)}</span>`;
+    html += disp;
+  }
+  el.innerHTML = html;
+}
+
+function escH(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── INPUT ─────────────────────────────────────
+document.getElementById('type-input').addEventListener('input', function() {
+  if (finished) return;
+  userInput = this.value;
+
+  // Start timer on first char
+  if (userInput.length === 1 && !startTime) {
+    beginCountdown();
+  }
+
+  // Count errors
+  errorCount = 0;
+  for (let i = 0; i < userInput.length; i++) {
+    if (userInput[i] !== chars[i]) errorCount++;
+  }
+  const correct = userInput.length - errorCount;
+  const acc = userInput.length > 0 ? Math.round(correct / userInput.length * 100) : 100;
+
+  // WPM
+  let wpm = 0;
+  if (startTime) {
+    const mins = (Date.now() - startTime) / 60000;
+    wpm = mins > 0 ? Math.round(correct / 5 / mins) : 0;
+  }
+
+  // Progress
+  document.getElementById('progFill').style.width =
+    Math.min(userInput.length / chars.length * 100, 100) + '%';
+
+  // Border
+  const wrap = document.getElementById('inputWrap');
+  if (userInput.length > 0) {
+    const ok = userInput[userInput.length - 1] === chars[userInput.length - 1];
+    wrap.className = 'input-wrap ' + (ok ? 'correct-border' : 'wrong-border');
+  } else {
+    wrap.className = 'input-wrap';
+  }
+
+  setStats(wpm, acc + '%', errorCount, elapsedSec > 0 ? elapsedSec : '—', timeLeft);
+  renderPassage();
+
+  // Finished all chars
+  if (userInput.length >= chars.length) endTest('complete');
+});
+
+document.getElementById('type-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Tab') { e.preventDefault(); newTest(); }
+});
+
+// ── COUNTDOWN ─────────────────────────────────
+function beginCountdown() {
+  startTime = Date.now();
+
+  // elapsed counter
+  elapsedID = setInterval(() => {
+    elapsedSec = Math.round((Date.now() - startTime) / 1000);
+    document.getElementById('sTime').textContent = elapsedSec;
+  }, 500);
+
+  // countdown
+  countdownID = setInterval(() => {
+    timeLeft--;
+    setRing(timeLeft, timeLimit);
+    document.getElementById('sLeft').textContent = timeLeft;
+
+    if (timeLeft <= 10) {
+      document.getElementById('sLeft').classList.add('danger');
+      document.getElementById('cringFg').style.stroke = 'var(--wrong)';
+      document.getElementById('cringNum').style.color  = 'var(--wrong)';
+    }
+
+    if (timeLeft <= 0) endTest('timeout');
+  }, 1000);
+}
+
+// ── RING ──────────────────────────────────────
+function setRing(left, total) {
+  const off = CIRC * (1 - left / total);
+  document.getElementById('cringFg').style.strokeDashoffset = off;
+  document.getElementById('cringNum').textContent = left;
+}
+
+// ── END TEST ──────────────────────────────────
+function endTest(reason) {
+  clearInterval(countdownID);
+  clearInterval(elapsedID);
+  finished = true;
+
+  document.getElementById('type-input').disabled    = true;
+  document.getElementById('type-input').placeholder = reason === 'timeout' ? '⏰ Time\'s up!' : '✅ Complete!';
+  document.getElementById('inputWrap').className    = 'input-wrap disabled-wrap';
+
+  if (reason === 'timeout') {
+    document.getElementById('timeUpBanner').classList.add('show');
+  }
+
+  const dur  = startTime ? (Date.now() - startTime) / 1000 : 0;
+  const mins = dur / 60;
+
+  let correct = 0;
+  for (let i = 0; i < chars.length; i++) {
+    if (i < userInput.length && userInput[i] === chars[i]) correct++;
+  }
+
+  const total  = userInput.length;
+  const errors = total - correct;
+  const wpm    = mins > 0 ? Math.round(correct / 5 / mins) : 0;
+  const rawWpm = mins > 0 ? Math.round(total   / 5 / mins) : 0;
+  const acc    = total > 0 ? Math.round(correct / total * 100) : 0;
+
+  setTimeout(() => showModal(wpm, rawWpm, acc, errors, correct, total, Math.round(dur)), 500);
+}
+
+// ── STATS ─────────────────────────────────────
+function setStats(wpm, acc, err, elapsed, left) {
+  document.getElementById('sWpm').textContent  = wpm;
+  document.getElementById('sAcc').textContent  = acc;
+  document.getElementById('sErr').textContent  = err;
+  document.getElementById('sTime').textContent = elapsed;
+  document.getElementById('sLeft').textContent = left;
+}
+
+// ── MODAL ─────────────────────────────────────
+function showModal(wpm, raw, acc, err, correct, total, dur) {
+  document.getElementById('mWpm').textContent     = wpm;
+  document.getElementById('mRaw').textContent     = raw;
+  document.getElementById('mAcc').textContent     = acc + '%';
+  document.getElementById('mErr').textContent     = err;
+  document.getElementById('mCorrect').textContent = correct;
+  document.getElementById('mTotal').textContent   = total;
+  document.getElementById('mTime').textContent    = dur + 's';
+
+  const rk = getRank(wpm);
+  const rb = document.getElementById('mRank');
+  rb.textContent = rk.icon + ' ' + rk.label;
+  rb.className   = 'm-rank ' + rk.cls;
+
+  document.getElementById('modalBg').classList.add('on');
+}
+
+function closeModal() { document.getElementById('modalBg').classList.remove('on'); }
+
+function getRank(w) {
+  if (w < 20)  return {icon:'🐢', label:'Beginner',  cls:'rk-b'};
+  if (w < 40)  return {icon:'🚶', label:'Average',   cls:'rk-a'};
+  if (w < 60)  return {icon:'🏃', label:'Good',      cls:'rk-g'};
+  if (w < 80)  return {icon:'⚡', label:'Fast',      cls:'rk-f'};
+  if (w < 100) return {icon:'🚀', label:'Expert',    cls:'rk-e'};
+  return              {icon:'👑', label:'Elite',      cls:'rk-el'};
+}
+
+// ── BUTTONS ───────────────────────────────────
+function newTest()   { closeModal(); init(false); }
+function retryTest() { closeModal(); init(true);  }
+
+// Global Tab
+document.addEventListener('keydown', e => {
+  if (e.key === 'Tab') { e.preventDefault(); newTest(); }
+});
+
+// ── START ─────────────────────────────────────
+init();
+</script>
+</body>
+</html>
